@@ -369,6 +369,29 @@ def seg_generate_dic(path_seg, path_out):
     with open(path_out, "w", encoding="utf-8") as f:
         json.dump(dic, f, ensure_ascii=False)
 
+# 清洗平行语料中可能存在的中文
+def detection_zh(path_ti:str, path_zh:str) -> None:
+    with open(path_ti, "r", encoding="utf-8") as f_ti, open(path_zh, "r", encoding="utf-8") as f_zh:
+        f_ti = f_ti.readlines()
+        f_zh = f_zh.readlines()
+    
+    result_ti = []
+    result_zh = []
+    for index, i_ti in tqdm(enumerate(f_ti)):
+        flag = 0
+        for j_i_ti in i_ti:
+            if '\u4e00' <= j_i_ti <= '\u9fff':
+                flag = 1
+                break
+        if flag == 1:
+            continue
+        else:
+            result_ti.append(f_ti[index])
+            result_zh.append(f_zh[index])
+    
+    with open(path_ti + "_", "w", encoding="utf-8") as f_ti, open(path_zh + "_", "w", encoding="utf-8") as f_zh:
+        f_ti.writelines(result_ti)
+        f_zh.writelines(result_zh)
 
 if __name__ == '__main__':
     # data_file = "/data1/2023/yrh/k-translation/data/raw/train/zh.txt"
