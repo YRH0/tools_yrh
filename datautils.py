@@ -3,7 +3,6 @@ import re
 from tqdm import tqdm
 from transformers import BloomTokenizerFast
 import os
-import matplotlib.pyplot as plt
 import pynlpir
 
 def bytes_to_unicode():
@@ -32,29 +31,6 @@ def convert_tokens_to_string(byte_decoder, tokens):
     text = "".join(tokens)
     text_utf = bytearray([byte_decoder[c] for c in text]).decode("utf-8", 'ignore')
     return text_utf
-
-
-def make_graph(my_dict: dict):
-    '''
-    # 输入词典 输出柱状图    
-    '''
-    with open(my_dict,"r",encoding="utf-8") as f:
-        my_dict = json.loads(f.readline())
-    # 绘制柱状图
-    keys = my_dict.keys()
-    values = my_dict.values()
-    plt.bar(keys, values)
-
-    # 设置横轴标签和纵轴标签
-    # plt.text(x=100, y=100, s='text', rotation=90)
-    plt.xlabel('Fruit')
-    plt.ylabel('Quantity')
-    # plt.xlim(0,1000)
-    plt.ylim(0,20000)
-    # 设置标题
-    plt.title('Quantity of Fruits')
-    # 展示图形
-    plt.savefig('savefig_example.png')
 
 
 # 采用BloomTokenizerFast的bbpe分词藏语
@@ -93,19 +69,6 @@ def bbpe_seg_ti(ti_file: str):
     keys = my_dict.keys()
     values = my_dict.values()
 
-    # 绘制柱状图
-    plt.bar(keys, values)
-
-    # 设置横轴标签和纵轴标签
-    plt.xlabel('Fruit')
-    plt.ylabel('Quantity')
-
-    # 设置标题
-    plt.title('Quantity of Fruits')
-
-    # 展示图形
-    plt.savefig('savefig_example.png')
-    
     with open(ti_file_sen_f_path,"a",encoding="utf-8") as f:
         json.dump(my_dict,f,ensure_ascii=False)
 
@@ -376,6 +339,34 @@ def seg_generate_dic(path_seg, path_out):
     dic = dict(sorted(dic.items(), key = lambda x: x[1], reverse=True))
     with open(path_out, "w", encoding="utf-8") as f:
         json.dump(dic, f, ensure_ascii=False)
+
+
+# 替换多个匹配项
+def rm_noug(dirpath):
+    return_result = []
+    for file in tqdm(os.listdir(dirpath)):
+        with open(os.path.join(dirpath,file), "r", encoding="utf-8") as f:
+            for line in f.readlines():
+                ugPattern = re.compile(u'[\u0600-\u06FF]+')
+                if ugPattern.search(line):
+                    re1 = re.sub(r"[^\u0600-\u06FF0-9\–%]"," ",line)
+
+                    re1 = re.sub("0"," 0 ",re1)
+                    re1 = re.sub("1"," 1 ",re1)
+                    re1 = re.sub("2"," 2 ",re1)
+                    re1 = re.sub("3"," 3 ",re1)
+                    re1 = re.sub("4"," 4 ",re1)
+                    re1 = re.sub("5"," 5 ",re1)
+                    re1 = re.sub("6"," 6 ",re1)
+                    re1 = re.sub("7"," 7 ",re1)
+                    re1 = re.sub("8"," 8 ",re1)
+                    re1 = re.sub("9"," 9 ",re1)
+                    re1 = re.sub("،"," ، ",re1)
+
+                    re1 = re.sub(r" +"," ",re1)
+                    return_result.append(re1.strip()+"\n")
+    return return_result
+
 
 
 if __name__ == '__main__':
