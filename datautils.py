@@ -4,6 +4,8 @@ from tqdm import tqdm
 from transformers import BloomTokenizerFast
 import os
 import pynlpir
+from gensim import models
+import gensim.corpora as corpora
 
 def bytes_to_unicode():
     """
@@ -31,6 +33,30 @@ def convert_tokens_to_string(byte_decoder, tokens):
     text = "".join(tokens)
     text_utf = bytearray([byte_decoder[c] for c in text]).decode("utf-8", 'ignore')
     return text_utf
+
+
+# 根据路径中分词的文件，生成词典
+def generate_tf_idf_dic(document_path:str) -> None:
+    with open(document_path,"r",encoding="utf-8") as f:
+        string_list100 = [i.strip().split(" ") for i in f.readlines()]
+    id2word = corpora.Dictionary(string_list100)  # 创建词典
+    id2word.filter_extremes(no_below=1, no_above=1, keep_n=100000)  # 筛选词典，出现次数至少为1，至少在一篇文档中出现，词典大小最多100000个词
+    id2word.save(document_path + "_tfidf_dic")  # 保存词典
+    pass
+
+# 根据路径保存词与文档的一个共现矩阵
+# tfidf_model = models.TfidfModel.load('test_tfidf.model') 载入模型
+# corpus_tfidf = [tfidf_model[doc] for doc in corpus]
+# print(corpus_tfidf[:1])
+# print([[(id2word[id], freq) for id, freq in cp] for cp in corpus_tfidf[:1]])
+def generate_tf_idf_model(document_path, dic_path:str) -> None:
+    with open(document_path,"r",encoding="utf-8") as f:
+        string_list100 = [i.strip().split(" ") for i in f.readlines()]
+    id2word = corpora.Dictionary() 
+    id2word.load(dic_path)
+    corpus = [id2word.doc2bow(text) for text in string_list100]   # 分别对每篇文章建立词袋向量
+    tfidf_model = models.TfidfModel(corpus=corpus, dictionary=id2word)
+    tfidf_model.save(document_path + '_tfidf_model') #保存模型到本地
 
 
 # 采用BloomTokenizerFast的bbpe分词藏语
@@ -72,6 +98,26 @@ def bbpe_seg_ti(ti_file: str):
     with open(ti_file_sen_f_path,"a",encoding="utf-8") as f:
         json.dump(my_dict,f,ensure_ascii=False)
 
+# 判断数据是否存在空行
+def detection_zh(path_ti:str, path_zh:str) -> None:
+    with open(path_ti, "r", encoding="utf-8") as f_ti, open(path_zh, "r", encoding="utf-8") as f_zh:
+        f_ti = f_ti.readlines()
+        f_zh = f_zh.readlines()
+    
+    result_ti = []
+    result_zh = []
+    for i_ti, i_zh in tqdm(zip(f_ti, f_zh)):
+        if i_ti == "\n" or i_zh == "\n":
+            pass
+        else:
+            result_ti.append(i_ti)
+            result_zh.append(i_zh)
+    
+    with open(path_ti + "_", "w", encoding="utf-8") as f_ti, open(path_zh + "_", "w", encoding="utf-8") as f_zh:
+        f_ti.writelines(result_ti)
+        f_zh.writelines(result_zh)
+# "/data1/2023/yrh/datautils/data/raw/valid/ti.txt", "/data1/2023/yrh/datautils/data/raw/valid/zh.txt"
+detection_zh("/data1/2023/yrh/datautils/data/raw/train/ti.txt", "/data1/2023/yrh/datautils/data/raw/train/zh.txt")
 
 
 def nlpir_seg_zh(path_zh: str, path_out):
@@ -339,6 +385,35 @@ def seg_generate_dic(path_seg, path_out):
     dic = dict(sorted(dic.items(), key = lambda x: x[1], reverse=True))
     with open(path_out, "w", encoding="utf-8") as f:
         json.dump(dic, f, ensure_ascii=False)
+
+
+
+# 清洗平行语料中可能存在的中文
+def detection_zh(path_ti:str, path_zh:str) -> None:
+    with open(path_ti, "r", encoding="utf-8") as f_ti, open(path_zh, "r", encoding="utf-8") as f_zh:
+        f_ti = f_ti.readlines()
+        f_zh = f_zh.readlines()
+    
+    result_ti = []
+    result_zh = []
+    for index, i_ti in tqdm(enumerate(f_ti)):
+        flag = 0
+        for j_i_ti in i_ti:
+            if '\u4e00' <= j_i_ti <= '\u9fff':
+                flag = 1
+                break
+        if flag == 1:
+            continue
+        else:
+            result_ti.append(f_ti[index])
+            result_zh.append(f_zh[index])
+    
+    with open(path_ti + "_", "w", encoding="utf-8") as f_ti, open(path_zh + "_", "w", encoding="utf-8") as f_zh:
+        f_ti.writelines(result_ti)
+        f_zh.writelines(result_zh)
+
+detection_zh("/data1/2023/yrh/datautils/data/raw/valid/ti.txt", "/data1/2023/yrh/datautils/data/raw/valid/zh.txt")
+
 
 
 # 替换多个匹配项
